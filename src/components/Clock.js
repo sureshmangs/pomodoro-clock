@@ -1,95 +1,143 @@
-import React, { Component } from 'react'
+import React, { useState, useEffect, useRef } from 'react';
+import alarm from './alarm.wav';
 
-class Clock extends Component {
+function Clock() {
+    const initialBreakLength = 5;    // in minutes
+    const initialSessionLength = 25;    // in minutes
+    const initialTimeLeft = initialSessionLength * 60;  // in seconds
+    const [breakLength, setBreakLength] = useState(initialBreakLength);
+    const [sessionLength, setSessionLength] = useState(initialSessionLength);
+    const [timeLeft, setTimeLeft] = useState(initialTimeLeft);
+    const [isPlay, setIsPlay] = useState(false);
+    const [pomodoroType, setPomodoroType] = useState('Session');
+    const sessionIntervalRef = useRef();
+    const breakIntervalRef = useRef();
+    const audioRef = useRef(null);
 
-    constructor(props) {
-        super(props)
-        this.state = {
-            breakLength: 5,
-            sessionLength: 25,
-            timerMinute: 25,
-            timerSecond: 0
-        }
+    const incrementBreak = () => {
+        !isPlay && setBreakLength(prevState => prevState + 1);
     }
 
+    const decrementBreak = () => {
+        !isPlay && setBreakLength(prevState => {
+            if (prevState - 1 < 0) return prevState
+            else return prevState - 1
+        });
+    }
 
-    incrementBreak = () => {
-        if (this.state.breakLength < parseInt(this.state.sessionLength / 2)) {
-            this.setState(prevState => {
-                return { breakLength: prevState.breakLength + 1 }
-            });
-        }
+    const incrementSession = () => {
+        !isPlay && setSessionLength(prevState => prevState + 1);
+        !isPlay && setTimeLeft(prevState => Math.round(Math.floor((prevState + 60) / 60)) * 60);
+    }
+
+    const decrementSession = () => {
+        !isPlay && setSessionLength(prevState => {
+            if (prevState - 1 < 0) return prevState
+            else return prevState - 1
+        });
+        !isPlay && setTimeLeft(prevState => {
+            if (prevState - 60 < 0) return 0;
+            else if (prevState % 60 === 0) return prevState - 60;
+            else return prevState - (prevState % 60);
+        });
+    }
+
+    const decrementTimeLeft = () => {
+        setTimeLeft(prevState => {
+            if (prevState - 1 < 0) return prevState
+            else return prevState - 1
+        })
+    }
+
+    const handlePlayPause = () => {
+        setIsPlay(prevState => !prevState);
 
     }
 
-
-    decrementBreak = () => {
-        if (this.state.breakLength > 1) {
-            this.setState(prevState => {
-                return { breakLength: prevState.breakLength - 1 }
-            });
-        }
-    }
-
-
-    incrementSession = () => {
-        if (this.state.sessionLength <= 59) {
-            this.setState(prevState => {
-                return { sessionLength: prevState.sessionLength + 1 }
-            });
-        }
+    const handleReset = () => {
+        setBreakLength(initialBreakLength);
+        setSessionLength(initialSessionLength);
+        setTimeLeft(initialTimeLeft);
+        setPomodoroType('Session');
+        setIsPlay(false);
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0.0;
 
     }
 
-
-    decrementSession = () => {
-        if (this.state.sessionLength > 2 * this.state.breakLength) {
-            this.setState(prevState => {
-                return { sessionLength: prevState.sessionLength - 1 }
-            });
+    useEffect(() => {
+        if (isPlay === true && pomodoroType === 'Session') {
+            sessionIntervalRef.current = setInterval(() => {
+                decrementTimeLeft();
+                if (timeLeft === 0) {
+                    clearInterval(sessionIntervalRef.current);
+                    // play audio
+                    audioRef.current.play();
+                    // start the break session
+                    setPomodoroType('Break');
+                    setTimeLeft(breakLength * 60);
+                }
+            }, 1000)
+        } else if (isPlay === false && pomodoroType === 'Session') {
+            clearInterval(sessionIntervalRef.current);
         }
-    }
 
-    timer = () => {
-        if (this.state.timerMinute === 0) {
-            this.setState(prevState => {
-                return { timerMinute: 59 }
-            })
+        if (isPlay === true && pomodoroType === 'Break') {
+            breakIntervalRef.current = setInterval(() => {
+                decrementTimeLeft();
+                if (timeLeft === 0) {
+                    clearInterval(breakIntervalRef.current);
+                    // play audio
+                    audioRef.current.play();
+                    // start the  session
+                    setPomodoroType('Session');
+                    setTimeLeft(sessionLength * 60);
+                }
 
+            }, 1000);
+        } else if (isPlay === false && pomodoroType === 'Break') {
+            clearInterval(breakIntervalRef.current);
         }
-    }
 
-
-    render() {
-        const { breakLength, sessionLength, timerMinute, timerSecond } = this.state;
-        return (
-            <div className="container">
-                <h1 className="text-center">Pomodoro Clock</h1>
-                <div className="row">
-                    <div className="col-md-6 text-right">
-                        <p>Break Length</p>
-                        <i onClick={this.incrementBreak} className="fa fa-arrow-up" aria-hidden="true"></i>
-                        <span> {breakLength} </span>
-                        <i onClick={this.decrementBreak} className="fa fa-arrow-down" aria-hidden="true"></i>
-                    </div>
-                    <div className="col-md-6 text-left">
-                        <p>Session Length</p>
-                        <i onClick={this.incrementSession} className="fa fa-arrow-up" aria-hidden="true"></i>
-                        <span> {sessionLength} </span>
-                        <i onClick={this.decrementSession} className="fa fa-arrow-down" aria-hidden="true"></i>
-                    </div>
+        // on unmounting
+        return () => {
+            clearInterval(sessionIntervalRef.current);
+            clearInterval(breakIntervalRef.current);
+        }
+    }, [isPlay, timeLeft, pomodoroType, breakLength, sessionLength]);
+    return (
+        <div className="container">
+            <h2 id="head">Pomodoro</h2>
+            <div className="operation">
+                <div className="operation-1">
+                    <p className="operation-head" id="break-label">Break Length</p>
+                    <span className="click" id="break-decrement" onClick={incrementBreak}><i className="fas fa-angle-up"></i></span>
+                    <span id="break-length">{breakLength}</span>
+                    <span className="click" id="session-decrement" onClick={decrementBreak}><i className="fas fa-angle-down"></i></span>
                 </div>
-                <div className="text-center">
-                    <p>Session</p>
-                    <p>{timerMinute} : {timerSecond}</p>
-                    <i class="fa fa-play-circle" aria-hidden="true"></i>
-                    <i class="fa fa-pause-circle" aria-hidden="true"></i>
-                    <i class="fa fa-refresh" aria-hidden="true"></i>
+                <div className="operation-2">
+                    <p className="operation-head" id="session-label">Session Length</p>
+                    <span className="click" id="break-increment" onClick={incrementSession}><i className="fas fa-angle-up"></i></span>
+                    <span id="session-length">{sessionLength}</span>
+                    <span className="click" id="session-increment" onClick={decrementSession}><i className="fas fa-angle-down"></i></span>
                 </div>
-
             </div>
-        );
-    }
+
+            <div className="time-box">
+                <div className="time">
+                    <p id="timer-label">{pomodoroType}</p>
+                    <p id="time-left"> {Math.round(Math.floor(timeLeft / 60)) < 10 ? '0' : null}{Math.round(Math.floor(timeLeft / 60))}:
+                    {timeLeft % 60 < 10 ? '0' : null}{timeLeft % 60} </p>
+                </div>
+            </div>
+            <div>
+                <span className="click" id="start_stop" onClick={handlePlayPause}><i className="fas fa-play-circle"></i></span>
+                <span className="click" id="reset" onClick={handleReset}><i className="fas fa-sync-alt "></i></span>
+            </div>
+
+            <audio ref={audioRef} id="beep" src={alarm} />
+        </div>
+    )
 }
 
 export default Clock

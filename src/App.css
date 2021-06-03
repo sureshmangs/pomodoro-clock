@@ -1,0 +1,67 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+/*######################### Clock.js ##################################*/
+
+.container {
+    color: white;
+    text-align: center;
+    background-color: #0c3338;
+    font-size: 1.5em;
+    height: 100vh;
+}
+
+#head {
+    padding: 1em;
+}
+
+.operation {
+    display: flex;
+    flex-direction: row;
+    /* border: 5px solid red; */
+    
+}
+
+.operation-1 {
+    flex: 1;
+    /* background-color: rgb(70, 42, 199); */
+}
+
+.operation-2 {
+    flex: 1;
+    /* background-color: rgb(196, 119, 26); */
+}
+
+.operation-head {
+    padding: 1em;
+}
+
+.click {
+    cursor: pointer;
+}
+
+.time-box {
+    display: flex;
+    flex-direction: row;
+    width: 100vw;
+    justify-content: center;
+}
+.time {
+    border: 5px solid rgb(19, 207, 50);
+    width: 300px;
+    border-radius: 1em;
+    padding: 1em;
+    margin:1em;
+}
+
+#time-left {
+    font-size: 3em;
+}
+
+span {
+    padding: 0.5em;
+}
